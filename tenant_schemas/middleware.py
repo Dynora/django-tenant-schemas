@@ -25,15 +25,15 @@ class TenantMiddleware(object):
         # Connection needs first to be at the public schema, as this is where
         # the tenant metadata is stored.
         connection.set_schema_to_public()
-        hostname = self.hostname_from_request(request)
+        if hasattr(request, 'user') and not  request.user.is_anonymous() and request.user.is_authenticated():
 
-        TenantModel = get_tenant_model()
-        try:
-            request.tenant = TenantModel.objects.get(domain_url=hostname)
-            connection.set_tenant(request.tenant)
-        except TenantModel.DoesNotExist:
-            raise self.TENANT_NOT_FOUND_EXCEPTION(
-                'No tenant for hostname "%s"' % hostname)
+            TenantModel = get_tenant_model()
+            try:
+                request.tenant = TenantModel.objects.get(id=request.user.client_id)
+                connection.set_tenant(request.tenant)
+            except TenantModel.DoesNotExist:
+                raise self.TENANT_NOT_FOUND_EXCEPTION(
+                    'Client not found "%s"' % request.user.client_id)
 
         # Content type can no longer be cached as public and tenant schemas
         # have different models. If someone wants to change this, the cache
