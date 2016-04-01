@@ -26,7 +26,7 @@ class TenantMixin(models.Model):
     Set this flag to false on a parent class if you don't want the schema
     to be automatically created upon save.
     """
-
+    is_active = models.BooleanField(default=False)
     domain_url = models.CharField(max_length=128, unique=True, blank=True, null=True)
     schema_name = models.CharField(max_length=63, unique=True,
                                    validators=[_check_schema_name])
@@ -47,7 +47,7 @@ class TenantMixin(models.Model):
 
         super(TenantMixin, self).save(*args, **kwargs)
 
-        if is_new and self.auto_create_schema:
+        if is_new and self.is_active and self.auto_create_schema:
             try:
                 self.create_schema(check_if_exists=True, verbosity=verbosity)
                 post_schema_sync.send(sender=TenantMixin, tenant=self)

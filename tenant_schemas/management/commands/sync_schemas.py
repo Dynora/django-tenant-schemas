@@ -45,7 +45,7 @@ class Command(SyncCommon):
             tenant = get_tenant_model().objects.filter(schema_name=schema_name).get()
             self._sync_tenant(tenant)
         else:
-            all_tenants = get_tenant_model().objects.exclude(schema_name=get_public_schema_name())
+            all_tenants = get_tenant_model().objects.exclude(schema_name=get_public_schema_name()).exclude(is_active=False)
             if not all_tenants:
                 self._notice("No tenants found!")
 
