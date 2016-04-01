@@ -34,8 +34,8 @@ class TenantMixin(models.Model):
     class Meta:
         abstract = True
 
-    def save(self, verbosity=1, *args, **kwargs):
-        is_new = self.pk is None
+    def save(self, verbosity=1, force_create=False, *args, **kwargs):
+        is_new = self.pk is None or force_create
 
         if is_new and connection.schema_name not in (get_public_schema_name(), settings.DEFAULT_TENANT_SCHEMA):
             raise Exception("Can't create tenant outside the public schema. "
