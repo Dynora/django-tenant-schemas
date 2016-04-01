@@ -27,13 +27,15 @@ class TenantMiddleware(object):
         connection.set_schema_to_public()
         TenantModel = get_tenant_model()
 
+        request.tenant = None
         if hasattr(request, 'user') and not request.user.is_anonymous() and request.user.is_authenticated():
             try:
-                request.tenant = TenantModel.objects.get(id=request.user.client_id)
-                connection.set_tenant(request.tenant)
+                request.tenant = TenantModel.objects.get(id=request.user.client_id, is_active=True)
             except TenantModel.DoesNotExist:
-                raise self.TENANT_NOT_FOUND_EXCEPTION(
-                    'Client not found "%s"' % request.user.client_id)
+                pass
+
+        if request.tenant:
+            connection.set_tenant(request.tenant)
         else:
             request.tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
             connection.set_tenant(request.tenant)
