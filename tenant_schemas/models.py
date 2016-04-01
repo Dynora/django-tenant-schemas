@@ -27,7 +27,7 @@ class TenantMixin(models.Model):
     to be automatically created upon save.
     """
 
-    domain_url = models.CharField(max_length=128, unique=True)
+    domain_url = models.CharField(max_length=128, unique=True, blank=True, null=True)
     schema_name = models.CharField(max_length=63, unique=True,
                                    validators=[_check_schema_name])
 
