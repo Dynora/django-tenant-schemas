@@ -1,13 +1,13 @@
 from django.db import connection
 
-from django.core.management.commands import dumpdata
+from django.core.management.commands import loaddata
 
 
-class Command(dumpdata.Command):
+class Command(loaddata.Command):
 
     def add_arguments(self, parser):
         super(Command, self).add_arguments(parser)
-        parser.add_argument('--schema', default='public', dest='schema', help='Specifies the schema to dump data for.')
+        parser.add_argument('--schema', default='public', dest='schema', help='Specifies the schema to load data for.')
 
     def handle(self, *args, **options):
         schema = options.get('schema')
