@@ -30,13 +30,22 @@ class TenantMiddleware(object):
         request.tenant = None
         if hasattr(request, 'user') and not request.user.is_anonymous() and request.user.is_authenticated():
             try:
-                request.tenant = TenantModel.objects.get(id=request.user.client_id, is_active=True)
+                request.tenant = TenantModel.objects.get(id=getattr(request.user, settings.USER_TENANT_FK), is_active=True)
             except TenantModel.DoesNotExist:
                 pass
+        else:
+            hostname = self.hostname_from_request(request)
+
+            try:
+                request.tenant = TenantModel.objects.get(domain_url=hostname)
+                connection.set_tenant(request.tenant)
+            except TenantModel.DoesNotExist:
+                raise self.TENANT_NOT_FOUND_EXCEPTION(
+                    'No tenant for hostname "%s"' % hostname)
 
         if request.tenant:
             connection.set_tenant(request.tenant)
-        else:
+        elif getattr(settings, "DEFAULT_TENANT_SCHEMA"):
             request.tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
             connection.set_tenant(request.tenant)
 
