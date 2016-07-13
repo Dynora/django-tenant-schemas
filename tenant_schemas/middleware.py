@@ -32,7 +32,8 @@ class TenantMiddleware(object):
             try:
                 request.tenant = TenantModel.objects.get(id=getattr(request.user, settings.USER_TENANT_FK), is_active=True)
             except TenantModel.DoesNotExist:
-                pass
+                raise self.TENANT_NOT_FOUND_EXCEPTION(
+                    'No tenant for user "%s"' % request.user)
         else:
             hostname = self.hostname_from_request(request)
 
@@ -48,6 +49,9 @@ class TenantMiddleware(object):
         elif getattr(settings, "DEFAULT_TENANT_SCHEMA"):
             request.tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
             connection.set_tenant(request.tenant)
+        else:
+            raise self.TENANT_NOT_FOUND_EXCEPTION(
+                'No tenant available')
 
         # Content type can no longer be cached as public and tenant schemas
         # have different models. If someone wants to change this, the cache

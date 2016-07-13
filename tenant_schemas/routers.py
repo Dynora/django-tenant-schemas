@@ -1,3 +1,4 @@
+from django.apps import apps
 from django.conf import settings
 from django.db.models.base import ModelBase
 
@@ -24,6 +25,15 @@ class TenantSyncRouter(object):
         else:
             if app_label not in app_labels(settings.TENANT_APPS):
                 return False
+
+        if model_name:
+            model = apps.get_model(app_label=app_label, model_name=model_name)
+            if hasattr(model, '__schema_name__') and model.__schema_name__:
+
+                conn_schema = connection.tenant.schema_name.strip()
+                if conn_schema == 'public' and conn_schema != model.__schema_name__ or \
+                   conn_schema != 'public' and model.__schema_name__ == 'public':
+                    return False
 
         return None
 
