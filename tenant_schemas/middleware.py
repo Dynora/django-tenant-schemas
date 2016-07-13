@@ -7,6 +7,11 @@ from tenant_schemas.utils import (get_tenant_model, remove_www,
                                   get_public_schema_name)
 
 
+class DummyTenant(object):
+    def __init__(self, schema):
+        self.schema_name = schema
+
+
 class TenantMiddleware(object):
     """
     This middleware should be placed at the very top of the middleware stack.
@@ -32,8 +37,7 @@ class TenantMiddleware(object):
             try:
                 request.tenant = TenantModel.objects.get(id=getattr(request.user, settings.USER_TENANT_FK), is_active=True)
             except TenantModel.DoesNotExist:
-                raise self.TENANT_NOT_FOUND_EXCEPTION(
-                    'No tenant for user "%s"' % request.user)
+                pass
         else:
             hostname = self.hostname_from_request(request)
 
@@ -41,13 +45,16 @@ class TenantMiddleware(object):
                 request.tenant = TenantModel.objects.get(domain_url=hostname)
                 connection.set_tenant(request.tenant)
             except TenantModel.DoesNotExist:
-                raise self.TENANT_NOT_FOUND_EXCEPTION(
-                    'No tenant for hostname "%s"' % hostname)
+                pass
 
         if request.tenant:
             connection.set_tenant(request.tenant)
-        elif getattr(settings, "DEFAULT_TENANT_SCHEMA"):
-            request.tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
+        elif getattr(settings, "DEFAULT_TENANT_SCHEMA", None):
+            if settings.DEFAULT_TENANT_SCHEMA == 'public':
+                request.tenant = DummyTenant(schema='public')
+            else:
+                request.tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
+
             connection.set_tenant(request.tenant)
         else:
             raise self.TENANT_NOT_FOUND_EXCEPTION(
