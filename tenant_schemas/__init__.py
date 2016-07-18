@@ -2,7 +2,7 @@ import django
 import warnings
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from tenant_schemas.utils import get_public_schema_name, get_tenant_model
+from tenant_schemas.utils import get_public_schema_name, get_tenant_model, get_tenant_user_model
 
 
 recommended_config = """

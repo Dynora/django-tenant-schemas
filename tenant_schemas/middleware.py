@@ -28,39 +28,33 @@ class TenantAwareSessionMiddleware(SessionMiddleware):
     def process_request(self, request):
         super(TenantAwareSessionMiddleware, self).process_request(request)
 
-        # Connection needs first to be at the public schema, as this is where
-        # the tenant metadata is stored.
-        connection.set_schema_to_public()
+        # Connection needs first to be at the default schema, as we create session keys using this schema name
         TenantModel = get_tenant_model()
+        if settings.DEFAULT_TENANT_SCHEMA == 'public':
+            default_tenant = DummyTenant(schema='public')
+        else:
+            default_tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
 
         request.tenant = None
+        request.host_tenant = None
+
+        hostname = self.hostname_from_request(request)
+
+        try:
+            request.host_tenant = TenantModel.objects.get(domain_url=hostname)
+        except TenantModel.DoesNotExist:
+            pass
+
         if request.session.get('__schema_name__'):
             try:
-                request.tenant = TenantModel.objects.get(id=getattr(request.user, settings.USER_TENANT_FK), is_active=True)
+                request.tenant = TenantModel.objects.get(schema_name=request.session['__schema_name__'], is_active=True)
             except TenantModel.DoesNotExist:
                 raise self.TENANT_NOT_FOUND_EXCEPTION('Invalid tenant stored in session')
+
+        if request.tenant:
+            connection.set_tenant(request.tenant)
         else:
-            hostname = self.hostname_from_request(request)
-
-            try:
-                request.tenant = TenantModel.objects.get(domain_url=hostname)
-            except TenantModel.DoesNotExist:
-                pass
-
-        if not request.tenant and getattr(settings, "DEFAULT_TENANT_SCHEMA", None):
-            if settings.DEFAULT_TENANT_SCHEMA == 'public':
-                request.tenant = DummyTenant(schema='public')
-            else:
-                try:
-                    request.tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
-                except TenantModel.DoesNotExist:
-                    pass
-
-        if not request.tenant:
-            raise self.TENANT_NOT_FOUND_EXCEPTION('No tenant available')
-
-        connection.set_tenant(request.tenant)
-        request.session['__schema_name__'] = request.tenant
+            connection.set_tenant(default_tenant)
 
         # Content type can no longer be cached as public and tenant schemas
         # have different models. If someone wants to change this, the cache
