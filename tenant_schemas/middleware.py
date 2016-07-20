@@ -9,13 +9,14 @@ from tenant_schemas.utils import (get_tenant_model, remove_www,
 
 
 class DummyTenant(object):
-    def __init__(self, schema):
+    def __init__(self, schema_name):
         self.schema_name = schema
 
 
 class TenantAwareSessionMiddleware(SessionMiddleware):
     """
     Replaces both TenantMiddleware and django.contrib.sessions.middleware
+    Assumes django sessions are global (place django.contrib.sessions in SHARED_APPS if
     """
     TENANT_NOT_FOUND_EXCEPTION = Http404
 
@@ -30,31 +31,35 @@ class TenantAwareSessionMiddleware(SessionMiddleware):
 
         # Connection needs first to be at the default schema, as we create session keys using this schema name
         TenantModel = get_tenant_model()
-        if settings.DEFAULT_TENANT_SCHEMA == 'public':
-            default_tenant = DummyTenant(schema='public')
-        else:
-            default_tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
-
         request.tenant = None
         request.host_tenant = None
 
-        hostname = self.hostname_from_request(request)
-
         try:
+            hostname = self.hostname_from_request(request)
             request.host_tenant = TenantModel.objects.get(domain_url=hostname)
         except TenantModel.DoesNotExist:
             pass
 
+        # First check if there is a schema set in the session
         if request.session.get('__schema_name__'):
             try:
                 request.tenant = TenantModel.objects.get(schema_name=request.session['__schema_name__'], is_active=True)
             except TenantModel.DoesNotExist:
                 raise self.TENANT_NOT_FOUND_EXCEPTION('Invalid tenant stored in session')
 
-        if request.tenant:
-            connection.set_tenant(request.tenant)
-        else:
-            connection.set_tenant(default_tenant)
+        # Fallback to the tenant associated to this host (if any)
+        if not request.tenant:
+            request.tenant = request.host_tenant
+
+        # If no tenant was set in the request and no tenant could be resolved using the hostname, fallback to the
+        # default tenant
+        if not request.tenant:
+            if settings.DEFAULT_TENANT_SCHEMA == 'public':
+                request.tenant = DummyTenant(schema_name='public')
+            else:
+                request.tenant = TenantModel.objects.get(schema_name=settings.DEFAULT_TENANT_SCHEMA)
+
+        connection.set_tenant(request.tenant)
 
         # Content type can no longer be cached as public and tenant schemas
         # have different models. If someone wants to change this, the cache

@@ -37,6 +37,7 @@ setup(
     ],
     install_requires=[
         'Django >= 1.6.0',
+        'django-threadlocals',
         'psycopg2',
     ],
     zip_safe=False,
