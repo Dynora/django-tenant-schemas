@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
-from threadlocals.middleware import get_current_request
+from threadlocals.threadlocals import get_current_request
 from django.db import connection
 from tenant_schemas import get_tenant_user_model
 
