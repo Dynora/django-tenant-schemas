@@ -35,9 +35,17 @@ class TenantAwareSessionMiddleware(SessionMiddleware):
         request.host_tenant = None
 
         try:
-            hostname = self.hostname_from_request(request)
-            request.host_tenant = TenantModel.objects.get(domain_url=hostname)
+            hostname = request.get_host().split(':')[0]
+
+            sql_query = "SELECT * FROM {tenant_table} WHERE '{hostname}' = ANY(string_to_array(domain_url, ',')) LIMIT 1".format(
+                tenant_table=TenantModel._meta.db_table,
+                hostname=hostname
+            )
+
+            request.host_tenant = TenantModel.objects.raw(sql_query)[0]
         except TenantModel.DoesNotExist:
+            pass
+        except IndexError:
             pass
 
         # First check if there is a schema set in the session
