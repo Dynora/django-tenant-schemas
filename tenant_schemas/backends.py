@@ -22,7 +22,7 @@ class TenantSessionAuthBackend(ModelBackend):
             if getattr(settings, 'RESTRICT_TENANT_TO_HOST', False):
                 if not request.host_tenant:
                     return
-                extra_kwargs['%s__schema_name' % settings.USER_TENANT_FK] = request.host_tenant.schema_name
+                extra_kwargs['%s__schema_name' % settings.TENANT_USER_TENANT_FK] = request.host_tenant.schema_name
 
             tenant_user = TenantUserModel.objects.select_related(settings.TENANT_USER_TENANT_FK).get(email=username, **extra_kwargs)
             connection.set_tenant(getattr(tenant_user, settings.TENANT_USER_TENANT_FK))
